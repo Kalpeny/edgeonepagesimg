@@ -162,9 +162,16 @@ async function processImage(fileId, originalName, chatId, messageId, token, kv, 
     const imageUrl = `${domain}/i/${filename}`;
 
     // 10. 发送回复
-    // 防止 Markdown 解析错误，对 URL 进行转义或使用代码块
-    const replyText = `✅ *上传成功！*\n` +
-                      `\`${imageUrl}\``;
+    // 使用 Markdown 格式，代码块 `...` 点击即可自动复制
+    const replyText = `✅ *上传成功！*\n\n` +
+                      `🔗 *直链*\n` +
+                      `\`${imageUrl}\`\n\n` +
+                      `📝 *Markdown*\n` +
+                      `\`![](${imageUrl})\`\n\n` +
+                      `🌐 *HTML*\n` +
+                      `\`<img src="${imageUrl}" />\`\n\n` +
+                      `🤖 *BBCode*\n` +
+                      `\`[img]${imageUrl}[/img]\``;
 
     await sendMessage(chatId, replyText, messageId, token);
 }
