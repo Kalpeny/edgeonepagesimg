@@ -12,10 +12,16 @@ export async function onRequest(context) {
     });
   }
 
-  // 2. 身份验证 (仅针对 list/delete)
+  // 2. 身份验证 (针对 list, delete, upload)
   const url = new URL(request.url);
-  if (url.pathname === '/list' || url.pathname === '/delete') {
-    // 优先从环境变量获取，若无则使用默认值（请务必在 EdgeOne 控制台设置 API_KEY 环境变量）
+  // 需要鉴权的路径
+  const protectedPaths = ['/list', '/delete', '/upload'];
+  
+  // 如果是根路径的 POST 请求 (通常也是上传)，也需要鉴权
+  const isRootPost = url.pathname === '/' && request.method === 'POST';
+
+  if (protectedPaths.includes(url.pathname) || isRootPost) {
+    // 优先从环境变量获取，若无则使用默认值
     const VALID_KEY = env.API_KEY || 'your-secret-api-key-123456'; 
     const authHeader = request.headers.get('Authorization');
 
@@ -39,7 +45,7 @@ export async function onRequest(context) {
   const newHeaders = new Headers(response.headers);
   newHeaders.set("Access-Control-Allow-Origin", "*");
   newHeaders.set("X-Content-Type-Options", "nosniff");
-  // newHeaders.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload"); // 生产环境建议开启
+  // newHeaders.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
   return new Response(response.body, {
     status: response.status,
