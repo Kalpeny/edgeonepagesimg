@@ -1,5 +1,5 @@
 // 带密码验证的删除 API
-const ADMIN_PASSWORD = 'admin123'; // 与前端密码保持一致
+const ADMIN_PASSWORD = '3.1415926'; // 与前端密码保持一致
 
 export async function onRequestPost(context) {
   try {
