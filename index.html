@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EdgeOne Pages 图床</title>
+    <title>老王的图床</title>
     <style>
         * {
             margin: 0;
@@ -239,12 +239,13 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🖼️ EdgeOne Pages 图床</h1>
+            <h1>🖼️ 老王的图床</h1>
             <p>基于 EdgeOne Pages 和 KV 存储的开源图床服务</p>
         </div>
         
         <div style="background: white; border-radius: 10px; padding: 15px 30px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center;">
-            <a href="/admin" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 1.1rem;">🛠️ 进入后台管理</a>
+            <a href="/admin" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 1.1rem; margin-right: 20px;">🛠️ 进入后台管理</a>
+            <a href="#" id="resetKey" style="color: #888; text-decoration: none; font-size: 0.9rem;">🔑 修改密钥</a>
         </div>
         
         <div class="upload-section">
@@ -301,6 +302,26 @@
         const uploading = document.getElementById('uploading');
         const resultSection = document.getElementById('resultSection');
         const toast = document.getElementById('toast');
+        
+        // 获取或设置 API Key
+        let API_KEY = localStorage.getItem('API_KEY');
+        if (!API_KEY) {
+            API_KEY = prompt('第一次使用，请输入您的上传密钥 (API Key)：');
+            if (API_KEY) {
+                localStorage.setItem('API_KEY', API_KEY);
+            }
+        }
+
+        // 重置 Key 功能
+        document.getElementById('resetKey').addEventListener('click', (e) => {
+            e.preventDefault();
+            const newKey = prompt('请输入新的 API Key:', API_KEY || '');
+            if (newKey) {
+                API_KEY = newKey;
+                localStorage.setItem('API_KEY', newKey);
+                alert('密钥已更新！');
+            }
+        });
         
         // 上传区域点击事件（仅在点击空白区域时触发）
         uploadArea.addEventListener('click', (e) => {
@@ -369,6 +390,9 @@
             try {
                 const response = await fetch('/upload', {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: formData
                 });
                 
