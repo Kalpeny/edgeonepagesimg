@@ -5,4 +5,4 @@ compatibility_date = "2024-01-01"
 # KV 命名空间绑定
 [[kv_namespaces]]
 binding = "IMAGES"
-id = "your_kv_namespace_id"  # 创建后替换
+id = "ns-5QtWyBn9xa3J"  # 创建后替换
