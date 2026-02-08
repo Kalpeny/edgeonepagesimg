@@ -1,50 +1,51 @@
 export async function onRequestGet(context) {
   try {
-    // EdgeOne Pages: IMAGES 是全局变量，直接使用
+    const { env } = context;
+    // 兼容全局变量和环境变量
+    const IMAGES_KV = env.IMAGES || IMAGES;
     
-// 获取所有图片列表
-    const list = await IMAGES.list();
+    // 获取所有图片列表
+    const list = await IMAGES_KV.list();
+    const keys = list.keys || [];
     
+    // 并发限制：一次处理 5 个请求，防止瞬间超时
+    const CONCURRENCY_LIMIT = 5;
     const images = [];
     
-    for (const key of list.keys || []) {
-      try {
-        // EdgeOne Pages 使用 key.key 而不是 key.name
-        const keyName = key.key || key.name;
-        
-        // 从 KV 获取数据（JSON 格式）
-        const jsonData = await IMAGES.get(keyName);
-        
-        if (jsonData) {
-          // 解析 JSON 数据
-          const storageData = JSON.parse(jsonData);
-          const metadata = storageData.metadata || {};
+    // 分批处理函数
+    async function processBatch(batchKeys) {
+      const promises = batchKeys.map(async (key) => {
+        try {
+          const keyName = key.key || key.name;
+          // 从 KV 获取数据
+          const jsonData = await IMAGES_KV.get(keyName);
           
-          images.push({
-            filename: keyName,
-            url: `/i/${keyName}`,
-            metadata: metadata,
-            uploadTime: metadata.uploadTime || null
-          });
-        } else {
-          // 如果无法获取数据，只返回基本信息
-          images.push({
-            filename: keyName,
-            url: `/i/${keyName}`,
-            metadata: {},
-            uploadTime: null
-          });
+          if (jsonData) {
+            const storageData = JSON.parse(jsonData);
+            const metadata = storageData.metadata || {};
+            return {
+              filename: keyName,
+              url: `/i/${keyName}`,
+              metadata: metadata,
+              uploadTime: metadata.uploadTime || null
+            };
+          }
+          return null; // 数据为空
+        } catch (e) {
+          console.error(`读取失败: ${key.name}`, e);
+          return null; // 单个失败不影响整体
         }
-      } catch (e) {
-        const keyName = key.key || key.name;
-        console.error(`读取图片 ${keyName} 失败:`, e.message);
-        images.push({
-          filename: keyName,
-          url: `/i/${keyName}`,
-          metadata: {},
-          uploadTime: null
-        });
-      }
+      });
+      
+      const results = await Promise.all(promises);
+      return results.filter(item => item !== null);
+    }
+    
+    // 分批执行
+    for (let i = 0; i < keys.length; i += CONCURRENCY_LIMIT) {
+      const batch = keys.slice(i, i + CONCURRENCY_LIMIT);
+      const batchResults = await processBatch(batch);
+      images.push(...batchResults);
     }
     
     // 按上传时间倒序排列

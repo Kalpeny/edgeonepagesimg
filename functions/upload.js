@@ -1,9 +1,8 @@
 export async function onRequestPost(context) {
   try {
-    const { request } = context;
-    
-    // EdgeOne Pages: IMAGES 是全局变量，直接使用
-    // 变量名对应控制台绑定的变量名称
+    const { request, env } = context;
+    // 兼容全局变量和环境变量
+    const IMAGES_KV = env.IMAGES || IMAGES;
     
     // 获取上传的文件
     const formData = await request.formData();
@@ -39,18 +38,27 @@ export async function onRequestPost(context) {
     const extension = file.name.split('.').pop().toLowerCase();
     const filename = `${random}.${extension}`;
     
-    // 读取文件为 ArrayBuffer
+    // 内存优化：ArrayBuffer 转 Base64
     const arrayBuffer = await file.arrayBuffer();
+    let base64Data;
     
-    // 将 ArrayBuffer 转换为 Base64（兼容大文件）
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    if (typeof Buffer !== 'undefined') {
+        // Node.js 环境或兼容层
+        base64Data = Buffer.from(arrayBuffer).toString('base64');
+    } else {
+        // 浏览器/Edge 环境：分片处理防止栈溢出
+        const bytes = new Uint8Array(arrayBuffer);
+        const len = bytes.byteLength;
+        const CHUNK_SIZE = 0x8000; // 32KB 分片
+        let binary = '';
+        for (let i = 0; i < len; i += CHUNK_SIZE) {
+            const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, len));
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+        base64Data = btoa(binary);
     }
-    const base64Data = btoa(binary);
     
-    // 打包数据和元数据（EdgeOne Pages KV 不支持单独的 metadata 参数）
+    // 打包数据和元数据
     const storageData = {
       data: base64Data,
       metadata: {
@@ -61,9 +69,9 @@ export async function onRequestPost(context) {
       }
     };
     
-    // 存储到 KV（作为 JSON 字符串）
+    // 存储到 KV
     try {
-      await IMAGES.put(filename, JSON.stringify(storageData));
+      await IMAGES_KV.put(filename, JSON.stringify(storageData));
     } catch (kvError) {
       console.error('KV put error:', kvError);
       throw new Error('存储到 KV 失败: ' + kvError.message);
